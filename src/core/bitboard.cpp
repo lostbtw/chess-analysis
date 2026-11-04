@@ -1,4 +1,4 @@
-#include "bitboard.h"
+#include "core/bitboard.h"
 
 std::string bitboard_to_string(Bitboard bitboard) {
     std::string output;

@@ -3,8 +3,8 @@
 
 #include <string>
 
-#include "bitboard.h"
-#include "types.h"
+#include "core/bitboard.h"
+#include "core/types.h"
 
 // FEN (Forsyth-Edwards Notation) is a one-line text format describing a chess position.
 constexpr const char* START_FEN =

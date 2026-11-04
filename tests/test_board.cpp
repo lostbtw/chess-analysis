@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "board.h"
+#include "core/board.h"
 
 static int failures = 0;
 

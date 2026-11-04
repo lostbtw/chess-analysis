@@ -3,7 +3,7 @@
 #include <bit>
 #include <string>
 
-#include "types.h"
+#include "core/types.h"
 
 constexpr Bitboard FILE_A = 0x0101010101010101ULL;
 constexpr Bitboard RANK_1 = 0x00000000000000FFULL;

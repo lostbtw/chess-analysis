@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
 
-#include "board.h"
+#include "core/board.h"
 
 // Temporary driver: `chess [FEN]` prints the position. UCI will replace this later.
 int main(int argc, char** argv) {

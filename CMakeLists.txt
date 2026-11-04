@@ -17,8 +17,8 @@ endif()
 
 # Engine core as a library, so the executable and the tests share the same code.
 add_library(engine
-  src/bitboard.cpp
-  src/board.cpp
+  src/core/bitboard.cpp
+  src/core/board.cpp
 )
 target_include_directories(engine PUBLIC src)
 
