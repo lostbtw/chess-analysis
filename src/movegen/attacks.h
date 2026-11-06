@@ -63,3 +63,6 @@ inline Bitboard pawn_attacks(Color color, Square square) { return attack_tables_
 Bitboard bishop_attacks(Square square, Bitboard occupied);
 Bitboard rook_attacks(Square square, Bitboard occupied);
 Bitboard queen_attacks(Square square, Bitboard occupied);
+
+// Any piece except a pawn, whose attacks depend on its color.
+Bitboard piece_attacks(PieceType piece_type, Square square, Bitboard occupied);

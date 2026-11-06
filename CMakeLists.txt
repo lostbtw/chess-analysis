@@ -21,6 +21,7 @@ add_library(engine
   src/core/board.cpp
   src/core/move.cpp
   src/movegen/attacks.cpp
+  src/movegen/movegen.cpp
 )
 target_include_directories(engine PUBLIC src)
 
@@ -35,6 +36,10 @@ add_test(NAME board COMMAND test_board)
 add_executable(test_make_move tests/test_make_move.cpp)
 target_link_libraries(test_make_move PRIVATE engine)
 add_test(NAME make_move COMMAND test_make_move)
+
+add_executable(test_movegen tests/test_movegen.cpp)
+target_link_libraries(test_movegen PRIVATE engine)
+add_test(NAME movegen COMMAND test_movegen)
 
 add_executable(test_attacks tests/test_attacks.cpp)
 target_link_libraries(test_attacks PRIVATE engine)

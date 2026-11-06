@@ -36,3 +36,14 @@ Bitboard rook_attacks(Square square, Bitboard occupied) {
 Bitboard queen_attacks(Square square, Bitboard occupied) {
     return bishop_attacks(square, occupied) | rook_attacks(square, occupied);
 }
+
+Bitboard piece_attacks(PieceType piece_type, Square square, Bitboard occupied) {
+    switch (piece_type) {
+        case KNIGHT: return knight_attacks(square);
+        case BISHOP: return bishop_attacks(square, occupied);
+        case ROOK:   return rook_attacks(square, occupied);
+        case QUEEN:  return queen_attacks(square, occupied);
+        case KING:   return king_attacks(square);
+        default:     return 0;
+    }
+}
