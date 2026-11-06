@@ -3,7 +3,6 @@
 
 #include "core/board.h"
 
-// Temporary driver: `chess [FEN]` prints the position. UCI will replace this later.
 int main(int argc, char** argv) {
     std::string fen = START_FEN;
     if (argc > 1) {
@@ -20,6 +19,5 @@ int main(int argc, char** argv) {
         return 1;
     }
     std::cout << board.to_string();
-    std::cout << "\nWhite pieces:\n" << bitboard_to_string(board.pieces(WHITE));
     return 0;
 }

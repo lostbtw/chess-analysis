@@ -15,19 +15,15 @@ constexpr Bitboard rank_bitboard(int rank) { return RANK_1 << (8 * rank); }
 
 constexpr bool test_bit(Bitboard bitboard, Square square) { return (bitboard >> square) & 1ULL; }
 
-// Number of set bits (= number of pieces in the set).
 inline int count_set_bits(Bitboard bitboard) { return std::popcount(bitboard); }
 
-// Index of the least significant set bit. The bitboard must not be 0.
+// The bitboard must not be empty.
 inline Square least_significant_bit(Bitboard bitboard) { return Square(std::countr_zero(bitboard)); }
 
-// Return the least significant set bit and remove it from the bitboard.
-// Typical use: while (bitboard) { Square square = pop_least_significant_bit(bitboard); ... }
 inline Square pop_least_significant_bit(Bitboard& bitboard) {
     Square square = least_significant_bit(bitboard);
-    bitboard &= bitboard - 1;  // clears the lowest set bit
+    bitboard &= bitboard - 1;
     return square;
 }
 
-// Debug: draw a bitboard as an 8x8 grid (rank 8 on top).
 std::string bitboard_to_string(Bitboard bitboard);

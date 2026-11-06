@@ -1,5 +1,4 @@
 #pragma once
-// Basic types shared by the whole engine.
 
 #include <cstdint>
 
@@ -9,7 +8,7 @@ enum Color : int { WHITE, BLACK, COLOR_COUNT };
 
 enum PieceType : int { PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, PIECE_TYPE_COUNT };
 
-// A piece is (color, type) packed into one number: white pieces 0..5, black 6..11.
+// White pieces are 0..5, black pieces 6..11.
 enum Piece : int {
     WHITE_PAWN, WHITE_KNIGHT, WHITE_BISHOP, WHITE_ROOK, WHITE_QUEEN, WHITE_KING,
     BLACK_PAWN, BLACK_KNIGHT, BLACK_BISHOP, BLACK_ROOK, BLACK_QUEEN, BLACK_KING,
@@ -17,8 +16,7 @@ enum Piece : int {
     PIECE_COUNT = 12
 };
 
-// Square numbering: A1 = 0, B1 = 1, ..., H1 = 7, A2 = 8, ..., H8 = 63.
-// square = rank * 8 + file.
+// square = rank * 8 + file, so A1 = 0, H1 = 7, A2 = 8, ..., H8 = 63.
 enum Square : int {
     A1, B1, C1, D1, E1, F1, G1, H1,
     A2, B2, C2, D2, E2, F2, G2, H2,
@@ -32,7 +30,6 @@ enum Square : int {
     SQUARE_COUNT = 64
 };
 
-// Castling rights as 4 flags that can be combined with |.
 enum CastlingRights : int {
     NO_CASTLING = 0,
     WHITE_KINGSIDE  = 1,
