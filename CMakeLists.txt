@@ -22,6 +22,7 @@ add_library(engine
   src/core/move.cpp
   src/movegen/attacks.cpp
   src/movegen/movegen.cpp
+  src/movegen/perft.cpp
 )
 target_include_directories(engine PUBLIC src)
 
@@ -40,6 +41,10 @@ add_test(NAME make_move COMMAND test_make_move)
 add_executable(test_movegen tests/test_movegen.cpp)
 target_link_libraries(test_movegen PRIVATE engine)
 add_test(NAME movegen COMMAND test_movegen)
+
+add_executable(test_perft tests/test_perft.cpp)
+target_link_libraries(test_perft PRIVATE engine)
+add_test(NAME perft COMMAND test_perft)
 
 add_executable(test_attacks tests/test_attacks.cpp)
 target_link_libraries(test_attacks PRIVATE engine)
