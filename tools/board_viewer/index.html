@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Board Viewer</title>
+<!-- Board UI: chessground (Lichess board), GPL-3.0, https://github.com/lichess-org/chessground -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chessground@9.2.1/assets/chessground.base.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chessground@9.2.1/assets/chessground.brown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chessground@9.2.1/assets/chessground.cburnett.css">
+<style>
+  :root {
+    --background: #f4f1ea;
+    --panel: #ffffff;
+    --text: #1f1d1a;
+    --muted: #6b665e;
+    --border: #ddd6c8;
+    --positive: #2f855a;
+    --negative: #c53030;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background: #1b1a18;
+      --panel: #252421;
+      --text: #ece8e1;
+      --muted: #a29c92;
+      --border: #3a3833;
+      --positive: #48bb78;
+      --negative: #f56565;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 24px 16px;
+    display: grid;
+    grid-template-columns: minmax(0, 560px) minmax(0, 1fr);
+    gap: 24px;
+  }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .subtitle { color: var(--muted); font-size: 14px; margin: 0 0 16px; }
+
+  #board {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  button, input {
+    font: inherit;
+    font-size: 14px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+  }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--muted); }
+  input { flex: 1 1 260px; min-width: 0; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    align-self: start;
+  }
+  .status { color: var(--muted); font-size: 14px; margin-bottom: 12px; }
+  .status strong { color: var(--text); }
+  .total { font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .total-caption { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .term { margin-bottom: 14px; }
+  .term-header { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 4px; }
+  .term-value { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .bar-track {
+    position: relative;
+    height: 10px;
+    background: var(--border);
+    border-radius: 5px;
+    overflow: hidden;
+  }
+  .bar-track::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--muted);
+  }
+  .bar { position: absolute; top: 0; bottom: 0; }
+  .bar.positive { left: 50%; background: var(--positive); }
+  .bar.negative { right: 50%; background: var(--negative); }
+  .formula {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 13px;
+    color: var(--muted);
+    word-break: break-word;
+  }
+  .error { color: var(--negative); font-size: 14px; margin-top: 8px; min-height: 1em; }
+</style>
+</head>
+<body>
+<main>
+  <section>
+    <h1>Board Viewer</h1>
+    <p class="subtitle">Drag or click pieces. Legal moves and evaluation come from the engine.</p>
+    <div id="board"></div>
+    <div class="controls">
+      <button id="undo-button">Undo</button>
+      <button id="flip-button">Flip board</button>
+      <button id="reset-button">Start position</button>
+    </div>
+    <div class="controls">
+      <input id="fen-input" spellcheck="false" aria-label="FEN">
+      <button id="load-button">Load FEN</button>
+    </div>
+    <div class="error" id="error"></div>
+  </section>
+
+  <section class="panel">
+    <div class="status" id="status"></div>
+    <div class="total" id="total"></div>
+    <div class="total-caption">Total score in pawns, from White's point of view</div>
+    <div id="terms"></div>
+    <div class="formula" id="formula"></div>
+  </section>
+</main>
+
+<script type="module">
+import { Chessground } from "https://cdn.jsdelivr.net/npm/chessground@9.2.1/dist/chessground.min.js";
+
+const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+const TERM_LABELS = { material: "Material", piece_square_tables: "Piece-square tables" };
+const BAR_SCALE_CENTIPAWNS = 1000;
+
+const state = { analysis: null, lastMove: null, history: [] };
+
+const fenInput = document.getElementById("fen-input");
+const errorElement = document.getElementById("error");
+
+const board = Chessground(document.getElementById("board"), {
+  coordinates: true,
+  animation: { enabled: true, duration: 150 },
+  highlight: { lastMove: true, check: true },
+  movable: { free: false, showDests: true, events: { after: handleBoardMove } },
+  premovable: { enabled: false },
+});
+
+// Chessground wants legal moves as a map: from square -> list of target squares.
+function destinationsFrom(legalMoves) {
+  const destinations = new Map();
+  for (const move of legalMoves) {
+    const fromSquare = move.uci.slice(0, 2);
+    const toSquare = move.uci.slice(2, 4);
+    if (!destinations.has(fromSquare)) destinations.set(fromSquare, []);
+    destinations.get(fromSquare).push(toSquare);
+  }
+  return destinations;
+}
+
+function formatPawns(centipawns) {
+  const pawns = centipawns / 100;
+  return (pawns > 0 ? "+" : "") + pawns.toFixed(2);
+}
+
+function formatCentipawns(centipawns) {
+  return (centipawns >= 0 ? "+" : "−") + Math.abs(centipawns);
+}
+
+function renderBoard() {
+  const analysis = state.analysis;
+  board.set({
+    fen: analysis.fen.split(" ")[0],
+    turnColor: analysis.side_to_move,
+    check: analysis.in_check,
+    lastMove: state.lastMove ? [state.lastMove.slice(0, 2), state.lastMove.slice(2, 4)] : undefined,
+    movable: { color: analysis.side_to_move, dests: destinationsFrom(analysis.legal_moves) },
+  });
+}
+
+function renderPanel() {
+  const analysis = state.analysis;
+  const sideName = analysis.side_to_move === "white" ? "White" : "Black";
+  let statusText = `<strong>${sideName}</strong> to move`;
+  if (analysis.legal_moves.length === 0) {
+    statusText = analysis.in_check ? `<strong>Checkmate.</strong> ${sideName} is mated` : "<strong>Stalemate</strong>";
+  } else if (analysis.in_check) {
+    statusText += " · <strong>check</strong>";
+  }
+  statusText += ` · ${analysis.legal_moves.length} legal moves`;
+  document.getElementById("status").innerHTML = statusText;
+
+  const totalElement = document.getElementById("total");
+  totalElement.textContent = formatPawns(analysis.total);
+  totalElement.style.color = analysis.total > 0 ? "var(--positive)" : analysis.total < 0 ? "var(--negative)" : "";
+
+  const termsElement = document.getElementById("terms");
+  termsElement.innerHTML = "";
+  for (const term of analysis.terms) {
+    const widthPercent = Math.min(Math.abs(term.value) / BAR_SCALE_CENTIPAWNS, 1) * 50;
+    const direction = term.value >= 0 ? "positive" : "negative";
+    termsElement.insertAdjacentHTML("beforeend", `
+      <div class="term">
+        <div class="term-header">
+          <span>${TERM_LABELS[term.name] || term.name}</span>
+          <span class="term-value">${formatCentipawns(term.value)} cp</span>
+        </div>
+        <div class="bar-track"><div class="bar ${direction}" style="width: ${widthPercent}%"></div></div>
+      </div>`);
+  }
+
+  const parts = analysis.terms.map(term => `${formatCentipawns(term.value)} ${term.name}`);
+  document.getElementById("formula").textContent = `${formatCentipawns(analysis.total)} cp = ${parts.join(" ")}`;
+  fenInput.value = analysis.fen;
+}
+
+async function loadPosition(fen, moveThatLedHere = null, rememberCurrent = true) {
+  try {
+    const response = await fetch("/api/eval?fen=" + encodeURIComponent(fen));
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Engine error");
+
+    if (rememberCurrent && state.analysis) state.history.push({ fen: state.analysis.fen, lastMove: state.lastMove });
+    state.analysis = result;
+    state.lastMove = moveThatLedHere;
+    errorElement.textContent = "";
+  } catch (error) {
+    errorElement.textContent = error.message;
+  }
+  if (state.analysis) {
+    renderBoard();
+    renderPanel();
+  }
+}
+
+// The board has already moved the piece visually; the engine's FEN then fixes castling rooks,
+// en passant captures and promotions. Promotion always picks a queen.
+function handleBoardMove(fromSquare, toSquare) {
+  const candidateMoves = state.analysis.legal_moves.filter(move => move.uci.startsWith(fromSquare + toSquare));
+  const chosenMove = candidateMoves.find(move => move.uci.endsWith("q")) || candidateMoves[0];
+  if (chosenMove) loadPosition(chosenMove.fen, chosenMove.uci);
+}
+
+document.getElementById("undo-button").addEventListener("click", () => {
+  const previous = state.history.pop();
+  if (previous) loadPosition(previous.fen, previous.lastMove, false);
+});
+document.getElementById("flip-button").addEventListener("click", () => board.toggleOrientation());
+document.getElementById("reset-button").addEventListener("click", () => loadPosition(START_FEN));
+document.getElementById("load-button").addEventListener("click", () => loadPosition(fenInput.value.trim()));
+fenInput.addEventListener("keydown", event => { if (event.key === "Enter") loadPosition(fenInput.value.trim()); });
+window.addEventListener("resize", () => board.redrawAll());
+
+loadPosition(START_FEN);
+</script>
+</body>
+</html>
