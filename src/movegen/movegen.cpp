@@ -110,3 +110,15 @@ void generate_pseudo_legal_moves(const Board& board, MoveList& moves) {
     for (PieceType piece_type : {KNIGHT, BISHOP, ROOK, QUEEN, KING})
         generate_piece_moves(board, piece_type, moves);
 }
+
+void generate_legal_moves(Board& board, MoveList& moves) {
+    MoveList pseudo_legal_moves;
+    generate_pseudo_legal_moves(board, pseudo_legal_moves);
+
+    const Color mover = board.side_to_move();
+    for (Move move : pseudo_legal_moves) {
+        board.make_move(move);
+        if (!board.is_square_attacked(board.king_square(mover), ~mover)) moves.add(move);
+        board.unmake_move();
+    }
+}
