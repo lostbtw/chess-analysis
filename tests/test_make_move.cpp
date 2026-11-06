@@ -13,7 +13,6 @@ static int failures = 0;
         }                                                                   \
     } while (0)
 
-// Plays the move, checks the resulting FEN, then undoes it and checks the original FEN is back.
 static void check_move(const std::string& fen_before, Move move, const std::string& fen_after) {
     Board board;
     if (!board.set_fen(fen_before)) {
@@ -75,7 +74,6 @@ int main() {
                "1N5k/8/8/8/8/8/8/K7 b - - 0 1");
     check_move("K7/8/8/8/8/8/p6k/8 b - - 0 1", Move(A2, A1, ROOK_PROMOTION), "K7/8/8/8/8/8/7k/r7 w - - 0 2");
 
-    // Several moves in a row, then everything undone.
     Board board;
     board.set_fen(START_FEN);
     board.make_move(Move(E2, E4, DOUBLE_PAWN_PUSH));

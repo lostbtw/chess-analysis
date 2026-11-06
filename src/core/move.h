@@ -45,7 +45,6 @@ public:
 
     constexpr bool operator==(const Move& other) const { return data_ == other.data_; }
 
-    // Long algebraic notation used by the UCI protocol, e.g. "e2e4" or "a7a8q".
     std::string to_uci_string() const;
 
 private:

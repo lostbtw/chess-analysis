@@ -40,7 +40,6 @@ public:
     void unmake_move();
 
 private:
-    // Everything unmake_move() cannot recompute from the move itself.
     struct UndoRecord {
         Move move;
         Piece captured_piece;

@@ -33,11 +33,8 @@ int main() {
     // Pawn moves are not generated yet: only the 4 knight moves exist in the start position.
     check_move_counts(START_FEN, 4, 0);
 
-    // Knight on e4: 8 moves + king on a1: 3 moves.
     check_move_counts("k7/8/8/8/4N3/8/8/K7 w - - 0 1", 11, 0);
-    // Own piece on d6 blocks one knight move; it is not a capture of an own piece.
     check_move_counts("k7/8/3P4/8/4N3/8/8/K7 w - - 0 1", 10, 0);
-    // Enemy piece on d6 can be captured.
     check_move_counts("k7/8/3p4/8/4N3/8/8/K7 w - - 0 1", 11, 1);
     // Rook a1: 7 up the file + b1, c1, d1; king e1: 5 moves (castling is not generated yet).
     check_move_counts("7k/8/8/8/8/8/8/R3K2r w - - 0 1", 15, 0);

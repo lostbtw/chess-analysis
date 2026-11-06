@@ -25,7 +25,6 @@ constexpr Bitboard attacks_from_square(Square square, const std::array<Offset, O
     return attacks;
 }
 
-// Evaluated at compile time.
 template <std::size_t OFFSET_COUNT>
 constexpr std::array<Bitboard, SQUARE_COUNT> make_attack_table(const std::array<Offset, OFFSET_COUNT>& offsets) {
     std::array<Bitboard, SQUARE_COUNT> table{};

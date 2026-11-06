@@ -5,8 +5,7 @@
 
 #include "core/move.h"
 
-// A fixed-size list avoids heap allocation in the move generator.
-// No legal chess position has more than 218 moves.
+// Fixed capacity avoids heap allocation. No legal chess position has more than 218 moves.
 class MoveList {
 public:
     static constexpr std::size_t CAPACITY = 256;
