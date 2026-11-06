@@ -19,6 +19,7 @@ endif()
 add_library(engine
   src/core/bitboard.cpp
   src/core/board.cpp
+  src/core/move.cpp
   src/movegen/attacks.cpp
 )
 target_include_directories(engine PUBLIC src)
