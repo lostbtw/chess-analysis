@@ -3,6 +3,7 @@
 #include <string>
 
 #include "core/board.h"
+#include "eval/evaluation.h"
 #include "movegen/perft.h"
 
 namespace {
@@ -37,11 +38,29 @@ int run_perft(int depth, const std::string& fen) {
     return 0;
 }
 
+int run_eval(const std::string& fen) {
+    Board board;
+    if (!board.set_fen(fen)) {
+        std::cerr << "Invalid FEN: " << fen << '\n';
+        return 1;
+    }
+
+    const EvaluationBreakdown breakdown = evaluate_breakdown(board);
+    std::cout << "{\"fen\": \"" << board.fen() << "\", \"terms\": ["
+              << "{\"name\": \"material\", \"value\": " << breakdown.material << "}, "
+              << "{\"name\": \"piece_square_tables\", \"value\": " << breakdown.piece_square << "}], "
+              << "\"total\": " << breakdown.total() << "}\n";
+    return 0;
+}
+
 }
 
 // Usage: chess [FEN]               print the position
 //        chess perft DEPTH [FEN]   count nodes, split by first move
+//        chess eval [FEN]          evaluation split into terms, as JSON (White's point of view)
 int main(int argc, char** argv) {
+    if (argc > 1 && std::string(argv[1]) == "eval")
+        return run_eval(argc > 2 ? join_arguments(argc, argv, 2) : START_FEN);
 
     if (argc > 2 && std::string(argv[1]) == "perft") {
         const std::string fen = (argc > 3) ? join_arguments(argc, argv, 3) : START_FEN;
