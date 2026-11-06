@@ -19,6 +19,7 @@ endif()
 add_library(engine
   src/core/bitboard.cpp
   src/core/board.cpp
+  src/movegen/attacks.cpp
 )
 target_include_directories(engine PUBLIC src)
 
@@ -29,3 +30,7 @@ enable_testing()
 add_executable(test_board tests/test_board.cpp)
 target_link_libraries(test_board PRIVATE engine)
 add_test(NAME board COMMAND test_board)
+
+add_executable(test_attacks tests/test_attacks.cpp)
+target_link_libraries(test_attacks PRIVATE engine)
+add_test(NAME attacks COMMAND test_attacks)
