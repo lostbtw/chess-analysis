@@ -66,9 +66,46 @@ void generate_pawn_moves(const Board& board, MoveList& moves) {
     }
 }
 
+struct CastlingRule {
+    Color side;
+    int required_right;
+    Square king_from_square;
+    Square king_to_square;
+    Square king_transit_square;
+    Square rook_from_square;
+    Bitboard squares_that_must_be_empty;
+    MoveFlag flag;
+};
+
+constexpr CastlingRule CASTLING_RULES[] = {
+    {WHITE, WHITE_KINGSIDE,  E1, G1, F1, H1, square_bitboard(F1) | square_bitboard(G1), KINGSIDE_CASTLE},
+    {WHITE, WHITE_QUEENSIDE, E1, C1, D1, A1, square_bitboard(B1) | square_bitboard(C1) | square_bitboard(D1), QUEENSIDE_CASTLE},
+    {BLACK, BLACK_KINGSIDE,  E8, G8, F8, H8, square_bitboard(F8) | square_bitboard(G8), KINGSIDE_CASTLE},
+    {BLACK, BLACK_QUEENSIDE, E8, C8, D8, A8, square_bitboard(B8) | square_bitboard(C8) | square_bitboard(D8), QUEENSIDE_CASTLE},
+};
+
+// The king may not castle out of, through or into check. The rook may pass an attacked square.
+void generate_castling_moves(const Board& board, MoveList& moves) {
+    const Color side = board.side_to_move();
+    const Color enemy = ~side;
+
+    for (const CastlingRule& rule : CASTLING_RULES) {
+        if (rule.side != side || !(board.castling_rights() & rule.required_right)) continue;
+        if (board.occupied() & rule.squares_that_must_be_empty) continue;
+        if (board.piece_on(rule.king_from_square) != make_piece(side, KING)) continue;
+        if (board.piece_on(rule.rook_from_square) != make_piece(side, ROOK)) continue;
+        if (board.is_square_attacked(rule.king_from_square, enemy)) continue;
+        if (board.is_square_attacked(rule.king_transit_square, enemy)) continue;
+        if (board.is_square_attacked(rule.king_to_square, enemy)) continue;
+
+        moves.add(Move(rule.king_from_square, rule.king_to_square, rule.flag));
+    }
+}
+
 }
 
 void generate_pseudo_legal_moves(const Board& board, MoveList& moves) {
+    generate_castling_moves(board, moves);
     generate_pawn_moves(board, moves);
     for (PieceType piece_type : {KNIGHT, BISHOP, ROOK, QUEEN, KING})
         generate_piece_moves(board, piece_type, moves);

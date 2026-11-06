@@ -29,13 +29,23 @@ static void check_move_counts(const std::string& fen, int expected_moves, int ex
     }
 }
 
+static bool has_move(const std::string& fen, Move expected_move) {
+    Board board;
+    board.set_fen(fen);
+    MoveList moves;
+    generate_pseudo_legal_moves(board, moves);
+    for (Move move : moves)
+        if (move == expected_move) return true;
+    return false;
+}
+
 int main() {
     check_move_counts(START_FEN, 20, 0);
 
     check_move_counts("k7/8/8/8/4N3/8/8/K7 w - - 0 1", 11, 0);
     check_move_counts("k7/8/3P4/8/4N3/8/8/K7 w - - 0 1", 11, 0);
     check_move_counts("k7/8/3p4/8/4N3/8/8/K7 w - - 0 1", 11, 1);
-    // Rook a1: 7 up the file + b1, c1, d1; king e1: 5 moves (castling is not generated yet).
+    // Rook a1: 7 up the file + b1, c1, d1; king e1: 5 moves.
     check_move_counts("7k/8/8/8/8/8/8/R3K2r w - - 0 1", 15, 0);
     // Rook a1 stops on the enemy pawn a5 and captures it: a2, a3, a4, a5 + b1, c1, d1; king e1: 5 moves.
     check_move_counts("7k/8/8/p7/8/8/8/R3K3 w - - 0 1", 12, 1);
@@ -66,6 +76,38 @@ int main() {
     CHECK(found_en_passant);
     // e6 push, en passant capture; king a1: 3 moves.
     CHECK(en_passant_moves.size() == 5);
+
+    const Move white_kingside(E1, G1, KINGSIDE_CASTLE);
+    const Move white_queenside(E1, C1, QUEENSIDE_CASTLE);
+    const Move black_kingside(E8, G8, KINGSIDE_CASTLE);
+    const Move black_queenside(E8, C8, QUEENSIDE_CASTLE);
+
+    const std::string both_sides = "r3k2r/8/8/8/8/8/8/R3K2R";
+    CHECK(has_move(both_sides + " w KQkq - 0 1", white_kingside));
+    CHECK(has_move(both_sides + " w KQkq - 0 1", white_queenside));
+    CHECK(has_move(both_sides + " b KQkq - 0 1", black_kingside));
+    CHECK(has_move(both_sides + " b KQkq - 0 1", black_queenside));
+    CHECK(!has_move(both_sides + " w - - 0 1", white_kingside));
+    CHECK(!has_move(both_sides + " w Kkq - 0 1", white_queenside));
+
+    // Pieces between the king and the rooks: knight on g1, queen on d1.
+    CHECK(!has_move("r3k2r/8/8/8/8/8/8/R2QK1NR w KQkq - 0 1", white_kingside));
+    CHECK(!has_move("r3k2r/8/8/8/8/8/8/R2QK1NR w KQkq - 0 1", white_queenside));
+
+    // Black rook on e4 gives check: no castling out of check.
+    CHECK(!has_move("r3k2r/8/8/8/4r3/8/8/R3K2R w KQkq - 0 1", white_kingside));
+    CHECK(!has_move("r3k2r/8/8/8/4r3/8/8/R3K2R w KQkq - 0 1", white_queenside));
+
+    // Black rook on f3 attacks f1: kingside is forbidden, queenside is fine.
+    CHECK(!has_move("r3k2r/8/8/8/8/5r2/8/R3K2R w KQkq - 0 1", white_kingside));
+    CHECK(has_move("r3k2r/8/8/8/8/5r2/8/R3K2R w KQkq - 0 1", white_queenside));
+
+    // Black rook on b3 attacks only b1, which the king does not cross.
+    CHECK(has_move("r3k2r/8/8/8/8/1r6/8/R3K2R w KQkq - 0 1", white_queenside));
+
+    // Right is listed, but there is no rook on a1.
+    CHECK(has_move("4k3/8/8/8/8/8/8/4K2R w KQ - 0 1", white_kingside));
+    CHECK(!has_move("4k3/8/8/8/8/8/8/4K2R w KQ - 0 1", white_queenside));
 
     if (failures == 0) std::cout << "All move generation tests passed.\n";
     return failures == 0 ? 0 : 1;
