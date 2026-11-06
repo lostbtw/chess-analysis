@@ -1,9 +1,10 @@
 #pragma once
-// Board representation: bitboards + a mailbox array.
 
 #include <string>
+#include <vector>
 
 #include "core/bitboard.h"
+#include "core/move.h"
 #include "core/types.h"
 
 // FEN (Forsyth-Edwards Notation) is a one-line text format describing a chess position.
@@ -32,20 +33,32 @@ public:
     void put_piece(Piece piece, Square square);
     void remove_piece(Square square);
 
+    // The move must be pseudo-legal in the current position. Legality is not checked here.
+    void make_move(Move move);
+    void unmake_move();
+
 private:
+    // Everything unmake_move() cannot recompute from the move itself.
+    struct UndoRecord {
+        Move move;
+        Piece captured_piece;
+        int castling_rights;
+        Square en_passant_square;
+        int halfmove_clock;
+    };
+
     void clear();
 
-    // pieces_by_type_[color][piece type]: where each kind of piece stands (12 bitboards).
     Bitboard pieces_by_type_[COLOR_COUNT][PIECE_TYPE_COUNT];
-    // pieces_by_color_[color]: union of all pieces of that color (kept in sync with pieces_by_type_).
     Bitboard pieces_by_color_[COLOR_COUNT];
-    // mailbox_[square]: which piece is on a square. Redundant with the bitboards,
-    // but makes "what is on e4?" O(1) (needed for captures, printing, eval).
+    // Same information as the bitboards, but answers "what stands on e4?" in O(1).
     Piece mailbox_[SQUARE_COUNT];
 
     Color side_to_move_;
-    int castling_rights_;           // combination of CastlingRights flags
-    Square en_passant_square_;      // en passant target square, or NO_SQUARE
-    int halfmove_clock_;            // plies since last capture or pawn move (50-move rule)
-    int fullmove_number_;           // starts at 1, incremented after Black moves
+    int castling_rights_;
+    Square en_passant_square_;
+    int halfmove_clock_;
+    int fullmove_number_;
+
+    std::vector<UndoRecord> history_;
 };

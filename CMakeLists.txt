@@ -32,6 +32,10 @@ add_executable(test_board tests/test_board.cpp)
 target_link_libraries(test_board PRIVATE engine)
 add_test(NAME board COMMAND test_board)
 
+add_executable(test_make_move tests/test_make_move.cpp)
+target_link_libraries(test_make_move PRIVATE engine)
+add_test(NAME make_move COMMAND test_make_move)
+
 add_executable(test_attacks tests/test_attacks.cpp)
 target_link_libraries(test_attacks PRIVATE engine)
 add_test(NAME attacks COMMAND test_attacks)

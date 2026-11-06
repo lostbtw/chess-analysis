@@ -1,16 +1,50 @@
 #include "core/board.h"
 
+#include <array>
 #include <cctype>
 #include <sstream>
 
 namespace {
-const char PIECE_CHARACTERS[] = "PNBRQKpnbrqk";  // index = Piece enum value
+
+const char PIECE_CHARACTERS[] = "PNBRQKpnbrqk";
 
 int piece_from_character(char character) {
     for (int piece = 0; piece < PIECE_COUNT; ++piece)
         if (PIECE_CHARACTERS[piece] == character) return piece;
     return -1;
 }
+
+// A move from or to one of these squares removes the matching castling rights.
+constexpr std::array<int, SQUARE_COUNT> make_castling_rights_masks() {
+    std::array<int, SQUARE_COUNT> masks{};
+    for (int& mask : masks) mask = ALL_CASTLING;
+    masks[A1] = ALL_CASTLING & ~WHITE_QUEENSIDE;
+    masks[H1] = ALL_CASTLING & ~WHITE_KINGSIDE;
+    masks[E1] = ALL_CASTLING & ~(WHITE_KINGSIDE | WHITE_QUEENSIDE);
+    masks[A8] = ALL_CASTLING & ~BLACK_QUEENSIDE;
+    masks[H8] = ALL_CASTLING & ~BLACK_KINGSIDE;
+    masks[E8] = ALL_CASTLING & ~(BLACK_KINGSIDE | BLACK_QUEENSIDE);
+    return masks;
+}
+
+constexpr std::array<int, SQUARE_COUNT> CASTLING_RIGHTS_MASKS = make_castling_rights_masks();
+
+struct RookMove {
+    Square from_square;
+    Square to_square;
+};
+
+RookMove castling_rook_move(Move castling_move) {
+    Square king_target = castling_move.to_square();
+    if (castling_move.flag() == KINGSIDE_CASTLE) return {Square(king_target + 1), Square(king_target - 1)};
+    return {Square(king_target - 2), Square(king_target + 1)};
+}
+
+// The captured pawn of an en passant capture is not on the target square, but behind it.
+Square captured_pawn_square(Square target_square, Color capturing_side) {
+    return Square(capturing_side == WHITE ? target_square - 8 : target_square + 8);
+}
+
 }
 
 Board::Board() { clear(); }
@@ -27,6 +61,7 @@ void Board::clear() {
     en_passant_square_ = NO_SQUARE;
     halfmove_clock_ = 0;
     fullmove_number_ = 1;
+    history_.clear();
 }
 
 void Board::put_piece(Piece piece, Square square) {
@@ -45,6 +80,66 @@ void Board::remove_piece(Square square) {
     mailbox_[square] = NO_PIECE;
 }
 
+void Board::make_move(Move move) {
+    const Color mover = side_to_move_;
+    const Square from_square = move.from_square();
+    const Square to_square = move.to_square();
+    const Piece moving_piece = mailbox_[from_square];
+    const Square captured_square = move.is_en_passant() ? captured_pawn_square(to_square, mover) : to_square;
+    const Piece captured_piece = move.is_capture() ? mailbox_[captured_square] : NO_PIECE;
+
+    history_.push_back({move, captured_piece, castling_rights_, en_passant_square_, halfmove_clock_});
+
+    if (move.is_capture()) remove_piece(captured_square);
+    remove_piece(from_square);
+    put_piece(move.is_promotion() ? make_piece(mover, move.promotion_piece_type()) : moving_piece, to_square);
+
+    if (move.is_castling()) {
+        const RookMove rook_move = castling_rook_move(move);
+        const Piece rook = mailbox_[rook_move.from_square];
+        remove_piece(rook_move.from_square);
+        put_piece(rook, rook_move.to_square);
+    }
+
+    en_passant_square_ = move.is_double_pawn_push() ? Square((from_square + to_square) / 2) : NO_SQUARE;
+    castling_rights_ &= CASTLING_RIGHTS_MASKS[from_square] & CASTLING_RIGHTS_MASKS[to_square];
+    halfmove_clock_ = (type_of(moving_piece) == PAWN || move.is_capture()) ? 0 : halfmove_clock_ + 1;
+    if (mover == BLACK) ++fullmove_number_;
+    side_to_move_ = ~mover;
+}
+
+void Board::unmake_move() {
+    const UndoRecord undo = history_.back();
+    history_.pop_back();
+
+    const Move move = undo.move;
+    const Color mover = ~side_to_move_;
+    const Square from_square = move.from_square();
+    const Square to_square = move.to_square();
+
+    const Piece piece_on_target = mailbox_[to_square];
+    remove_piece(to_square);
+    put_piece(move.is_promotion() ? make_piece(mover, PAWN) : piece_on_target, from_square);
+
+    if (move.is_castling()) {
+        const RookMove rook_move = castling_rook_move(move);
+        const Piece rook = mailbox_[rook_move.to_square];
+        remove_piece(rook_move.to_square);
+        put_piece(rook, rook_move.from_square);
+    }
+
+    if (move.is_capture()) {
+        const Square captured_square = move.is_en_passant() ? captured_pawn_square(to_square, mover) : to_square;
+        put_piece(undo.captured_piece, captured_square);
+    }
+
+    castling_rights_ = undo.castling_rights;
+    en_passant_square_ = undo.en_passant_square;
+    halfmove_clock_ = undo.halfmove_clock;
+    if (mover == BLACK) --fullmove_number_;
+    side_to_move_ = mover;
+}
+
 bool Board::set_fen(const std::string& fen) {
     clear();
     std::istringstream stream(fen);
@@ -52,12 +147,11 @@ bool Board::set_fen(const std::string& fen) {
     int halfmove_clock = 0, fullmove_number = 1;
 
     if (!(stream >> placement_text >> side_text >> castling_text >> en_passant_text)) { clear(); return false; }
-    // The two counters are optional in many FEN strings found in the wild.
+    // The two counters are missing in many FEN strings found in the wild.
     if (stream >> halfmove_clock) {
         if (!(stream >> fullmove_number)) fullmove_number = 1;
     }
 
-    // 1) Piece placement: ranks from 8 down to 1, files a..h, '/' between ranks.
     int rank = 7, file = 0;
     for (char character : placement_text) {
         if (character == '/') {
@@ -77,18 +171,15 @@ bool Board::set_fen(const std::string& fen) {
     }
     if (rank != 0 || file != 8) { clear(); return false; }
 
-    // Each side must have exactly one king, otherwise king_square() is meaningless.
     if (count_set_bits(pieces_by_type_[WHITE][KING]) != 1 || count_set_bits(pieces_by_type_[BLACK][KING]) != 1) {
         clear();
         return false;
     }
 
-    // 2) Side to move.
     if (side_text == "w") side_to_move_ = WHITE;
     else if (side_text == "b") side_to_move_ = BLACK;
     else { clear(); return false; }
 
-    // 3) Castling rights.
     if (castling_text != "-") {
         for (char character : castling_text) {
             switch (character) {
@@ -101,7 +192,6 @@ bool Board::set_fen(const std::string& fen) {
         }
     }
 
-    // 4) En passant target square.
     if (en_passant_text != "-") {
         if (en_passant_text.size() != 2 || en_passant_text[0] < 'a' || en_passant_text[0] > 'h'
             || (en_passant_text[1] != '3' && en_passant_text[1] != '6')) {
