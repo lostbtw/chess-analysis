@@ -4,6 +4,8 @@
 #include <cctype>
 #include <sstream>
 
+#include "movegen/attacks.h"
+
 namespace {
 
 const char PIECE_CHARACTERS[] = "PNBRQKpnbrqk";
@@ -78,6 +80,20 @@ void Board::remove_piece(Square square) {
     pieces_by_type_[color_of(piece)][type_of(piece)] &= ~square_mask;
     pieces_by_color_[color_of(piece)] &= ~square_mask;
     mailbox_[square] = NO_PIECE;
+}
+
+// Looks from `square` outwards: a piece attacks the square exactly when the same kind of piece
+// standing on the square would attack that piece back. Pawns are the only asymmetric case.
+bool Board::is_square_attacked(Square square, Color attacker) const {
+    const Bitboard occupied_squares = occupied();
+    const Bitboard queens = pieces(attacker, QUEEN);
+
+    if (pawn_attacks(~attacker, square) & pieces(attacker, PAWN)) return true;
+    if (knight_attacks(square) & pieces(attacker, KNIGHT)) return true;
+    if (king_attacks(square) & pieces(attacker, KING)) return true;
+    if (bishop_attacks(square, occupied_squares) & (pieces(attacker, BISHOP) | queens)) return true;
+    if (rook_attacks(square, occupied_squares) & (pieces(attacker, ROOK) | queens)) return true;
+    return false;
 }
 
 void Board::make_move(Move move) {

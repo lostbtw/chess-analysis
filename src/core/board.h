@@ -30,6 +30,8 @@ public:
     int halfmove_clock() const { return halfmove_clock_; }
     int fullmove_number() const { return fullmove_number_; }
 
+    bool is_square_attacked(Square square, Color attacker) const;
+
     void put_piece(Piece piece, Square square);
     void remove_piece(Square square);
 

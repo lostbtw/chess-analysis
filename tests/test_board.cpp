@@ -69,6 +69,29 @@ int main() {
         CHECK(!invalid_board.set_fen(fen));
     }
 
+    Board attack_board;
+    attack_board.set_fen(START_FEN);
+    CHECK(attack_board.is_square_attacked(E3, WHITE));
+    CHECK(!attack_board.is_square_attacked(E4, WHITE));
+    CHECK(attack_board.is_square_attacked(F6, BLACK));
+    CHECK(!attack_board.is_square_attacked(E5, BLACK));
+
+    // The black rook attacks e3 and the pawn on e2, but the pawn shields the king on e1.
+    attack_board.set_fen("4k3/8/8/8/4r3/8/4P3/4K3 w - - 0 1");
+    CHECK(attack_board.is_square_attacked(E3, BLACK));
+    CHECK(attack_board.is_square_attacked(E2, BLACK));
+    CHECK(!attack_board.is_square_attacked(E1, BLACK));
+
+    attack_board.set_fen("4k3/8/8/8/8/5n2/8/4K3 w - - 0 1");
+    CHECK(attack_board.is_square_attacked(E1, BLACK));
+    CHECK(attack_board.is_square_attacked(D2, BLACK));
+    CHECK(!attack_board.is_square_attacked(E2, BLACK));
+
+    // A black pawn attacks diagonally downwards: e1 yes, d1 no.
+    attack_board.set_fen("4k3/8/8/8/8/8/3p4/4K3 w - - 0 1");
+    CHECK(attack_board.is_square_attacked(E1, BLACK));
+    CHECK(!attack_board.is_square_attacked(D1, BLACK));
+
     if (failures == 0) std::cout << "All board tests passed.\n";
     return failures == 0 ? 0 : 1;
 }
