@@ -4,6 +4,7 @@
 
 #include "core/board.h"
 #include "eval/evaluation.h"
+#include "movegen/movegen.h"
 #include "movegen/perft.h"
 
 namespace {
@@ -46,10 +47,28 @@ int run_eval(const std::string& fen) {
     }
 
     const EvaluationBreakdown breakdown = evaluate_breakdown(board);
-    std::cout << "{\"fen\": \"" << board.fen() << "\", \"terms\": ["
+    const Color side = board.side_to_move();
+    const bool in_check = board.is_square_attacked(board.king_square(side), ~side);
+
+    std::cout << "{\"fen\": \"" << board.fen() << "\", "
+              << "\"side_to_move\": \"" << (side == WHITE ? "white" : "black") << "\", "
+              << "\"in_check\": " << (in_check ? "true" : "false") << ", "
+              << "\"terms\": ["
               << "{\"name\": \"material\", \"value\": " << breakdown.material << "}, "
               << "{\"name\": \"piece_square_tables\", \"value\": " << breakdown.piece_square << "}], "
-              << "\"total\": " << breakdown.total() << "}\n";
+              << "\"total\": " << breakdown.total() << ", "
+              << "\"legal_moves\": [";
+
+    MoveList legal_moves;
+    generate_legal_moves(board, legal_moves);
+    for (std::size_t index = 0; index < legal_moves.size(); ++index) {
+        const Move move = legal_moves[index];
+        board.make_move(move);
+        std::cout << (index > 0 ? ", " : "") << "{\"uci\": \"" << move.to_uci_string() << "\", \"fen\": \""
+                  << board.fen() << "\"}";
+        board.unmake_move();
+    }
+    std::cout << "]}\n";
     return 0;
 }
 
